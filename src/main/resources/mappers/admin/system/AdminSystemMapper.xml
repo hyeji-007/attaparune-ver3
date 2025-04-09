@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.green.attaparunever2.admin.system.AdminSystemMapper">
+    <select id="selSystemPostComment">
+        SELECT inquiry_comment_id AS inquiryCommentId, admin_id AS adminId
+        , inquiry_id AS inquiryId, comment_detail AS commentDetail
+        , created_at AS createdAt, updated_at AS updatedAt
+        FROM system_post_comment
+        WHERE inquiry_id = #{inquiryId}
+    </select>
+
+    <select id="selSettlementDetail">
+        SELECT (#{startDate}) AS startDate,
+        (#{endDate}) AS endDate,
+        SUM(C.menu_count * C.price) AS totalPrice,
+        F.restaurant_id AS restaurantId,
+        F.restaurant_name AS restaurantName,
+        IF(COUNT(A.ticket_id) = COUNT(DISTINCT E.ticket_id), 1, 0) AS state,
+        IFNULL(MAX(E.created_at), 0) AS paymentDay
+        FROM ticket A
+        LEFT JOIN `order` B ON A.order_id = B.order_id
+        LEFT JOIN order_detail C ON B.order_id = C.order_id
+        LEFT JOIN restaurant_menu D ON C.menu_id = D.menu_id
+        LEFT JOIN settlement_list E ON A.ticket_id = E.ticket_id  -- 정산 내역 확인
+        LEFT JOIN restaurant F ON B.restaurant_id = F.restaurant_id
+        WHERE A.ticket_status = 1
+        AND A.created_at BETWEEN #{startDate} AND #{endDate}
+        GROUP BY B.restaurant_id
+    </select>
+
+    <select id="getReviewRequestList">
+        SELECT
+        A.order_id AS orderId,
+        C.restaurant_name AS restaurantName,
+        A.review_text AS reviewText,
+        CASE
+        WHEN A.review_status = 1 THEN A.updated_at
+        ELSE NULL
+        END AS statusChangedAt
+        FROM review A
+        JOIN `order` B ON A.order_id = B.order_id
+        JOIN restaurant C ON B.restaurant_id = C.restaurant_id
+        AND A.review_status = 1
+        <if test="startDate != null and endDate != null">
+            AND
+            (
+            DATE_FORMAT(A.created_at, '%Y-%m-%d')
+            <![CDATA[ >= ]]>
+            #{startDate}
+            AND DATE_FORMAT(A.created_at, '%Y-%m-%d')
+            <![CDATA[ <= ]]>
+            #{endDate}
+            )
+        </if>
+
+        <if test="startDate != null and endDate == null">
+            AND
+            (
+            DATE_FORMAT(A.created_at, '%Y-%m-%d')
+            <![CDATA[ >= ]]>
+            #{startDate}
+            )
+        </if>
+
+        <if test="startDate == null and endDate != null">
+            AND
+            (
+            DATE_FORMAT(A.created_at, '%Y-%m-%d')
+            <![CDATA[ <= ]]>
+            #{endDate}
+            )
+        </if>
+        ORDER BY A.created_at DESC
+        LIMIT #{size} OFFSET #{startIdx}
+    </select>
+    
+    <select id="selSystemPost">
+        SELECT A.inquiry_id AS inquiryId, A.created_at AS createdAt, YEAR(A.created_at) AS `year`, A.role_code AS roleCode, A.post_code AS postCode,
+        case
+        when A.role_code = '00104' then B.name
+        when A.role_code IN('00101', '00102') then C.name
+        END AS name,
+        case
+        when D.inquiry_comment_id IS NOT NULL then 1
+        ELSE 0
+        END AS commentYn
+        FROM system_post A
+        LEFT JOIN user B
+        ON A.id = B.user_id
+        AND B.code = '00104'
+        LEFT JOIN admin C
+        ON A.id = C.admin_id
+        AND C.code IN('00101', '00102')
+        LEFT JOIN system_post_comment D
+        ON A.inquiry_id = D.inquiry_id
+        WHERE A.post_code NOT IN('00201', '00204')
+        LIMIT #{startIdx}, #{size}
+    </select>
+
+    <select id="selSystemPostTotalCount">
+        SELECT COUNT(*)
+        FROM system_post A
+        LEFT JOIN user B
+        ON A.id = B.user_id
+        AND B.code = '00104'
+        LEFT JOIN admin C
+        ON A.id = C.admin_id
+        AND C.code IN('00101', '00102')
+        LEFT JOIN system_post_comment D
+        ON A.inquiry_id = D.inquiry_id
+        WHERE A.post_code NOT IN('00201', '00204')
+    </select>
+    
+    <select id="selSystemPostPercentage">
+        SELECT
+        COUNT(CASE WHEN post_code = '00202' THEN 1 END) AS countForInquiry,
+        COUNT(CASE WHEN post_code = '00203' THEN 1 END) AS countForInconvenience,
+        COUNT(*) - COUNT(CASE WHEN post_code IN ('00201', '00204') THEN 1 END) AS totalCount
+        FROM system_post
+    </select>
+</mapper>

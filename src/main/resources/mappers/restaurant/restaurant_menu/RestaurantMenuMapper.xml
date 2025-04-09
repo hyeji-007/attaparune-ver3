@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.green.attaparunever2.restaurant.restaurant_menu.RestaurantMenuMapper">
+    <insert id="insMenu" useGeneratedKeys="true" keyProperty="menuId">
+        INSERT INTO `restaurant_menu`
+        SET category_id = #{categoryId}
+        , menu_name = #{menuName}
+        , menu_pic = #{menuPic}
+        , price = #{price}
+        <if test=" details != null and details != '' ">
+            , details = #{details}
+        </if>
+        , available = #{available}
+    </insert>
+
+    <select id="selMenuList">
+        SELECT menu_name AS menuName, price, detail, available, menu_pic AS menuPic, menu_id AS menuId
+        FROM restaurant_menu
+        WHERE category_id = #{categoryId};
+    </select>
+
+    <delete id="delMenu">
+        DELETE FROM restaurant_menu
+        WHERE menu_id = #{menuId};
+    </delete>
+
+    <update id="updMenu">
+        UPDATE restaurant_menu
+        <set>
+            <if test=" menuName != null and menuName != '' ">
+                menu_name = #{menuName}
+            </if>
+            <if test=" price != null and price != '' ">
+                , price = #{price}
+            </if>
+                , details = #{details}
+            <if test=" categoryId != null and categoryId != '' ">
+                , category_id = #{categoryId}
+            </if>
+            <if test=" available != null ">
+                , available = #{available}
+            </if>
+        </set>
+        WHERE menu_id = #{menuId}
+    </update>
+
+    <insert id="postCategory" useGeneratedKeys="true" keyProperty="categoryId">
+        INSERT INTO restaurant_menu_category
+           SET restaurant_id = #{restaurantId}
+             , category_name = #{categoryName}
+    </insert>
+
+    <update id="updCategory">
+        UPDATE restaurant_menu_category
+        <set>
+            <if test=" categoryName != null and categoryName != '' ">
+                category_name = #{categoryName}
+            </if>
+        </set>
+        WHERE category_id = #{categoryId}
+    </update>
+
+    <delete id="delCategory">
+        DELETE FROM restaurant_menu_category
+         WHERE category_id = #{categoryId}
+    </delete>
+
+    <select id="selMenuCategoryList">
+        SELECT category_id AS categoryId, category_name AS categoryName
+        FROM restaurant_menu_category
+        WHERE restaurant_id = #{restaurantId}
+    </select>
+    
+    <select id="selMenuCategoryByRestaurantIdAndCategoryName">
+        SELECT category_id AS categoryId, restaurant_id AS restaurantId, category_name AS category_name
+        , created_at AS createdAt, updated_at AS updatedAt
+        FROM restaurant_menu_category
+        WHERE restaurant_id = #{restaurantId}
+        AND category_name = #{categoryName}
+        ORDER BY category_id ASC
+        LIMIT 1
+    </select>
+
+    <select id="selCategoryMenuCount">
+        SELECT COUNT(*)
+        FROM restaurant_menu
+        WHERE category_id = #{categoryId}
+    </select>
+
+</mapper>

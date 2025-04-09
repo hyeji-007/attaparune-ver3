@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.green.attaparunever2.restaurant.restaurant_pic.RestaurantPicMapper">
+    <insert id="insRestaurantPic">
+        INSERT INTO restaurant_pic
+        ( restaurant_id, pic_name )
+        VALUES
+        <foreach collection="filePath" item="pic" separator=",">
+            ( #{restaurantId}, #{pic} )
+        </foreach>
+    </insert>
+
+    <update id="updRestaurantMenuPic">
+        UPDATE restaurant_menu
+           SET menu_pic = #{picName}
+         WHERE menu_id = #{menuId}
+    </update>
+
+    <delete id="deleteRestaurantPics">
+        DELETE FROM restaurant_pic
+        WHERE pic_id IN
+        <foreach item="picId" collection="picId" open="(" separator="," close=")">
+            #{picId}
+        </foreach>
+        AND restaurant_id = #{restaurantId}
+    </delete>
+
+    <select id="getFilePathByPicId" resultType="String">
+        SELECT pic_name
+        FROM restaurant_pic
+        WHERE pic_id = #{picId}
+    </select>
+
+    <select id="selRestaurantPic">
+        SELECT restaurant_id AS restaurantId, pic_name AS filePath
+        FROM restaurant_pic
+        WHERE restaurant_id = #{restaurantId}
+        LIMIT 1
+    </select>
+
+    <select id="selRestaurantAroundPic">
+        SELECT restaurant_id AS restaurantId, pic_name AS filePath
+        FROM restaurant_pic
+        WHERE restaurant_id = #{restaurantId}
+    </select>
+
+    <select id="selRestaurantMainPic">
+        SELECT pic_name AS filePath
+        FROM restaurant_pic
+        WHERE restaurant_id = #{restaurantId}
+        LIMIT 1
+    </select>
+
+    <select id="selRestaurantPicByRestaurantIdV3">
+        SELECT pic_id AS picId, restaurant_id AS restaurantId, pic_name AS picName
+        FROM restaurant_pic
+        WHERE restaurant_id = #{restaurantId}
+    </select>
+</mapper>

@@ -1,0 +1,361 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.green.attaparunever2.restaurant.RestaurantMapper">
+    <insert id="insRestaurant" keyProperty="restaurantId" useGeneratedKeys="true">
+        INSERT INTO restaurant
+           SET admin_id = #{adminId}
+             , category_id = #{categoryId}
+             , restaurant_name = #{restaurantName}
+             , restaurant_address = #{restaurantAddress}
+             , restaurant_number = #{restaurantNumber}
+             , business_number = #{businessNumber}
+             , operating_hours = #{operatingHours}
+             , restaurant_description = #{restaurantDescription}
+             , max_capacity = #{maxCapacity}
+             , lat = #{lat}
+             , lng = #{lng}
+    </insert>
+
+    <select id="selRestaurant">
+        SELECT admin_id AS adminId, category_id AS categoryId, restaurant_id AS restaurantId, restaurant_name AS restaurantName
+             , restaurant_address AS restaurantAddress, restaurant_number AS restaurantNumber
+             , business_number AS businessNumber, operating_hours AS operatingHours
+             , restaurant_description AS restaurantDescription, `status`
+             , max_capacity AS maxCapacity, created_at AS createdAt
+             , lat, lng
+          FROM restaurant
+         WHERE restaurant_id = #{restaurantId}
+    </select>
+
+    <select id="selRestaurantAround">
+        SELECT F.restaurant_name AS restaurantName
+             , F.restaurant_address AS restaurantAddress
+             , F.restaurant_id AS restaurantId
+             , F.lat, F.lng
+             , (6371 * ACOS(COS(RADIANS(40)) * COS(RADIANS(F.lat)) * COS(RADIANS(F.lng) - RADIANS(127)) + SIN(RADIANS(40)) * SIN(RADIANS(F.lat)))) AS DISTANCE,
+        IFNULL((
+            SELECT AVG(ABS(TIMESTAMPDIFF(MINUTE, B.reservation_time, C.use_date)))
+              FROM `order` A
+             INNER JOIN reservation B
+                ON A.order_id = B.order_id
+             INNER JOIN ticket C
+                ON B.order_id = C.order_id
+             WHERE A.restaurant_id = F.restaurant_id
+             GROUP BY A.restaurant_id
+        ), 40) AS avgRestaurant
+          FROM restaurant F
+        WHERE `status` = 0
+        <if test=" searchFilter != null and searchFilter != '' ">
+            AND F.restaurant_name LIKE '%${searchFilter}%'
+        </if>
+        AND lat &gt; #{sysMinLat}
+        AND lat &lt; #{sysMaxLat}
+        AND lng &gt; #{sysMinLng}
+        AND lng &lt; #{sysMaxLng}
+        <if test = " orderFilter != null and orderFilter != '' ">
+            <if test = " orderFilter == 0">
+                ORDER BY F.restaurant_name ASC;
+            </if>
+            <if test = " orderFilter == 1">
+                ORDER BY distance ASC;
+            </if>
+        </if>
+    </select>
+
+    <insert id="insHoliday">
+        INSERT INTO holiday
+           SET restaurant_id = #{restaurantId}
+             , closed_days = #{closedDays}
+    </insert>
+
+    <select id="selHolidays">
+        SELECT B.closed_days AS closedDays
+        FROM restaurant A
+        INNER JOIN holiday B
+        ON A.restaurant_id = B.restaurant_id
+        WHERE B.restaurant_id = #{restaurantId}
+    </select>
+    
+    <update id="updRestaurant">
+        UPDATE restaurant
+            <set>
+                <if test=" restaurantName != null and restaurantName != '' ">
+                      restaurant_name = #{restaurantName}
+                </if>
+                <if test=" restaurantAddress != null and restaurantAddress != '' ">
+                    , restaurant_address = #{restaurantAddress}
+                </if>
+                <if test=" restaurantNumber != null and restaurantNumber != '' ">
+                    , restaurant_number = #{restaurantNumber}
+                </if>
+                <if test=" operatingHours != null and operatingHours != '' ">
+                    , operating_hours = #{operatingHours}
+                </if>
+                    , restaurant_description = #{restaurantDescription}
+                <if test=" status != null">
+                    , `status` = #{status}
+                </if>
+                <if test=" maxCapacity != null and maxCapacity != '' ">
+                    , max_capacity = #{maxCapacity}
+                </if>
+                <if test=" lat != null and lat != '' ">
+                    , lat = #{lat}
+                </if>
+                <if test=" lng != null and lng != '' ">
+                    , lng = #{lng}
+                </if>
+            </set>
+         WHERE restaurant_id = #{restaurantId}
+    </update>
+    
+    <update id="updHoliday">
+        UPDATE holiday A
+         INNER JOIN restaurant B
+            ON A.restaurant_id = B.restaurant_id
+        <set>
+            <if test=" closedDays != null and closedDays != '' ">
+                A.closed_days = #{closedDays}
+            </if>
+        </set>
+         WHERE B.restaurant_id = #{restaurantId}
+           AND A.holiday_id = #{holidayId}
+    </update>
+
+    <select id="selRestaurantMain">
+        SELECT F.restaurant_name AS restaurantName
+        , F.restaurant_address AS restaurantAddress
+        , F.restaurant_id AS restaurantId
+        , IFNULL((
+        SELECT AVG(ABS(TIMESTAMPDIFF(MINUTE, B.reservation_time, C.use_date)))
+        FROM `order` A
+        INNER JOIN reservation B
+        ON A.order_id = B.order_id
+        INNER JOIN ticket C
+        ON B.order_id = C.order_id
+        WHERE A.restaurant_id = F.restaurant_id
+        GROUP BY A.restaurant_id
+        ), 40) AS avgRestaurant
+        FROM restaurant F
+        WHERE `status` = 0
+        AND category_id = #{categoryId}
+        LIMIT #{startIdx}, #{size}
+    </select>
+
+    <!-- 사장님 페이지 매출 내역 -->
+    <select id="selRestaurantPointByCreatedAt">
+        SELECT B.order_id AS orderId, B.created_at AS createdAt, C.user_id AS userId, C.name AS userName
+        , B.reservation_yn AS reservationYn, IF(B.reservation_yn = 1, '예약 주문', '앉아서 주문') AS reservationYnStr, B.restaurant_id AS restaurantId
+        , (
+            SELECT SUM(`point`)
+            FROM user_payment_member
+            WHERE order_id = B.order_id
+        ) AS `point`
+        FROM ticket A INNER JOIN `order` B
+            ON A.order_id = B.order_id
+        INNER JOIN user C
+            ON B.user_id = C.user_id
+        WHERE A.ticket_status = 1
+            AND B.restaurant_id = #{restaurantId}
+        <if test="startDate != null and endDate != null">
+            AND
+            (
+                DATE_FORMAT(A.use_date, '%Y-%m-%d')
+                <![CDATA[ >= ]]>
+                #{startDate}
+                AND DATE_FORMAT(A.use_date, '%Y-%m-%d')
+                <![CDATA[ <= ]]>
+                #{endDate}
+            )
+        </if>
+
+        <if test="startDate != null and endDate == null">
+            AND
+            (
+            DATE_FORMAT(A.use_date, '%Y-%m-%d')
+            <![CDATA[ >= ]]>
+            #{startDate}
+            )
+        </if>
+
+        <if test="startDate == null and endDate != null">
+            AND
+            (
+            DATE_FORMAT(A.use_date, '%Y-%m-%d')
+            <![CDATA[ <= ]]>
+            #{endDate}
+            )
+        </if>
+        LIMIT #{startIdx}, #{size}
+    </select>
+
+    <!-- 식당 일일 총 매출 -->
+    <select id="selRestaurantDayPoint">
+        SELECT C.restaurant_id, SUM(B.point) AS totalPoint
+        FROM ticket A INNER JOIN user_payment_member B
+        ON A.order_id = B.order_id
+        INNER JOIN `order` C
+        ON A.order_id = C.order_id
+        WHERE A.ticket_status = 1
+        AND C.restaurant_id = #{restaurantId}
+        AND DATE(A.use_date) = #{date}
+        GROUP BY C.restaurant_id
+    </select>
+
+    <!-- 식당 월별 총 매출 -->
+    <select id="selRestaurantMonthPoint">
+        SELECT C.restaurant_id, SUM(B.point) AS totalPoint
+        FROM ticket A INNER JOIN user_payment_member B
+        ON A.order_id = B.order_id
+        INNER JOIN `order` C
+        ON A.order_id = C.order_id
+        WHERE A.ticket_status = 1
+        AND C.restaurant_id = #{restaurantId}
+        AND DATE_FORMAT(A.use_date, '%Y-%m') = DATE_FORMAT(#{date}, '%Y-%m')
+        GROUP BY C.restaurant_id
+    </select>
+
+    <!-- 식당 주간 주문 내역 -->
+    <select id="selRestaurantWeekOrderCount">
+        WITH RECURSIVE DateRange AS (
+        SELECT DATE(#{startDate}) AS report_date
+        UNION ALL
+        SELECT DATE_ADD(report_date, INTERVAL 1 DAY)
+        FROM DateRange
+        WHERE report_date <![CDATA[ < ]]> DATE(#{endDate})
+        )
+        SELECT
+        dr.report_date AS date,
+        COALESCE(COUNT(CASE WHEN o.reservation_yn = 0 THEN 1 END), 0) AS seatedOrders,
+        COALESCE(COUNT(CASE WHEN o.reservation_yn = 1 THEN 1 END), 0) AS reservationOrders
+        FROM DateRange dr
+        LEFT JOIN `order` o
+        ON DATE(o.created_at) = dr.report_date
+        AND o.restaurant_id = #{restaurantId}
+        GROUP BY dr.report_date
+        ORDER BY dr.report_date
+    </select>
+
+    <!-- ver3 쿼리 -->
+
+    <!-- 사용자 메인 화면 식당 조회 -->
+    <select id="selRestaurantMainV3">
+        SELECT A.restaurant_id AS restaurantId
+        , A.restaurant_name AS restaurantName
+        , A.restaurant_address AS restaurantAddress
+        , (SELECT IFNULL(AVG(ABS(TIMESTAMPDIFF(MINUTE, B.start_meal_date, B.end_meal_date))), 40)
+        FROM meal_time B
+        WHERE B.restaurant_id = A.restaurant_id
+        AND ABS(TIMESTAMPDIFF(MINUTE, B.start_meal_date, B.end_meal_date)) <![CDATA[ < ]]> 60) AS avgRestaurant
+        , IFNULL(ROUND(AVG(R.rating), 1), 0.0) AS avgRating
+        FROM restaurant A
+        LEFT JOIN `order` O
+        ON A.restaurant_id = O.restaurant_id
+        LEFT JOIN review R
+        ON O.order_id = R.order_id
+        JOIN `admin` C
+        ON A.restaurant_id = C.division_id
+        AND C.coalition_state = 0
+        WHERE A.`status` = 0
+        AND A.category_id = #{categoryId}
+        GROUP BY A.restaurant_id
+        ORDER BY
+        CASE
+        WHEN #{filterType} = 0 THEN IFNULL(AVG(R.rating), 0)
+        WHEN #{filterType} = 1 THEN IFNULL(COUNT(R.order_id), 0)
+        END DESC,
+        CASE
+        WHEN #{filterType} IS NULL THEN A.restaurant_id
+        END ASC
+        LIMIT #{startIdx}, #{size}
+
+    </select>
+
+    <!-- 사용자 메인 화면 추천 식당 조회(별점순, 리뷰순 랜덤 3개만) -->
+    <select id="selRestaurantMainV3Limit3">
+        SELECT A.restaurant_id AS restaurantId
+        , A.restaurant_name AS restaurantName
+        , A.restaurant_description AS restaurantDescription
+        FROM restaurant A
+        LEFT JOIN `order` O
+        ON A.restaurant_id = O.restaurant_id
+        LEFT JOIN review R
+        ON O.order_id = R.order_id
+        WHERE A.`status` = 0
+        GROUP BY A.restaurant_id
+        ORDER BY
+        CASE
+        WHEN #{filterType} = 0 THEN IFNULL(AVG(R.rating), 0)
+        WHEN #{filterType} = 1 THEN IFNULL(COUNT(R.order_id), 0)
+        END DESC
+        LIMIT 3
+    </select>
+
+    <!-- 사용자 식당 찾기 화면 식당 리스트 조회 -->
+    <select id="selRestaurantAroundV3">
+        SELECT F.restaurant_name AS restaurantName
+        , F.restaurant_address AS restaurantAddress
+        , F.restaurant_id AS restaurantId
+        , F.lat, F.lng
+        , (6371 * ACOS(COS(RADIANS(40)) * COS(RADIANS(F.lat)) * COS(RADIANS(F.lng) - RADIANS(127)) + SIN(RADIANS(40)) *
+        SIN(RADIANS(F.lat)))) AS DISTANCE, (SELECT IFNULL(AVG(ABS(TIMESTAMPDIFF(MINUTE, B.start_meal_date, B.end_meal_date))), 40)
+        FROM meal_time B
+        WHERE B.restaurant_id = F.restaurant_id
+        AND ABS(TIMESTAMPDIFF(MINUTE, B.start_meal_date, B.end_meal_date)) <![CDATA[ < ]]> 60) AS avgRestaurant
+        ,
+        IFNULL((
+        SELECT AVG(G.rating)
+        FROM review G INNER JOIN `order` H
+        ON G.order_id = H.order_id
+        AND H.restaurant_id = F.restaurant_id
+        ), 0) AS avgRating
+        FROM restaurant F
+        WHERE `status` = 0
+        <if test=" searchFilter != null and searchFilter != '' ">
+            AND F.restaurant_name LIKE '%${searchFilter}%'
+        </if>
+        AND lat &gt; #{sysMinLat}
+        AND lat &lt; #{sysMaxLat}
+        AND lng &gt; #{sysMinLng}
+        AND lng &lt; #{sysMaxLng}
+        <if test=" orderFilter != null and orderFilter != '' ">
+            <if test=" orderFilter == 0">
+                ORDER BY F.restaurant_name ASC
+            </if>
+            <if test=" orderFilter == 1">
+                ORDER BY distance ASC
+            </if>
+            <if test=" orderFilter == 2">
+                ORDER BY avgRating DESC
+            </if>
+            <if test=" orderFilter == 3">
+                ORDER BY avgRestaurant ASC
+            </if>
+        </if>
+    </select>
+
+    <!-- 사용자 식당 상세화면 정보 조회 -->
+    <select id="selRestaurantByRestaurantId">
+        SELECT category_id AS categoryId, restaurant_id AS restaurantId, restaurant_name AS restaurantName
+        , restaurant_address AS restaurantAddress, restaurant_number AS restaurantNumber
+        , business_number AS businessNumber, operating_hours AS operatingHours
+        , restaurant_description AS restaurantDescription, `status`
+        , max_capacity AS maxCapacity, created_at AS createdAt
+        , lat, lng
+        , (
+        SELECT IFNULL(ROUND(AVG(rating), 1), 0.0)
+        FROM review B INNER JOIN `order` C
+        ON b.order_id = C.order_id
+        AND c.restaurant_id = #{restaurantId}
+        ) AS ratingAvg
+        , (
+        SELECT COUNT(*)
+        FROM review B INNER JOIN `order` C
+        ON b.order_id = C.order_id
+        AND c.restaurant_id = #{restaurantId}
+        ) AS reviewCnt
+        FROM restaurant
+        WHERE restaurant_id = #{restaurantId}
+    </select>
+</mapper>

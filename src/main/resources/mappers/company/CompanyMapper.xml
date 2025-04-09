@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.green.attaparunever2.company.CompanyMapper">
+    <select id="selEmployee">
+        SELECT A.user_id AS userId, A.uid, A.`name`, A.phone, A.email, A.point, A.activation
+        FROM user A
+        INNER JOIN company B
+        ON A.company_id = B.company_id
+        INNER JOIN admin C
+        ON B.company_id = C.division_id
+        WHERE A.company_id = #{companyId}
+        AND C.admin_id = #{adminId}
+        <if test=" searchFilter != null and searchFilter != '' ">
+            AND A.name LIKE '%${searchFilter}%'
+        </if>
+        ORDER BY A.uid ASC
+        LIMIT #{startIdx}, #{size}
+    </select>
+
+    <select id="selEmployeeCount">
+        SELECT COUNT(*)
+        FROM user A
+        INNER JOIN company B
+        ON A.company_id = B.company_id
+        INNER JOIN admin C
+        ON B.company_id = C.division_id
+        WHERE A.company_id = #{companyId}
+        AND C.admin_id = #{adminId}
+    </select>
+</mapper>

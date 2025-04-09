@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.green.attaparunever2.user.user_payment_member.UserPaymentMemberMapper">
+
+    <select id="getPoint">
+        SELECT point
+        FROM user
+        WHERE user_id = #{userId}
+    </select>
+
+    <select id="getMemberPoint">
+        SELECT user_id, point
+        FROM user_payment_member
+        WHERE order_id = #{orderId}
+    </select>
+
+    <update id="updateUserPoint">
+        UPDATE user
+        SET point = #{newPoint}
+        WHERE user_id = #{userId}
+    </update>
+
+    <select id="getPaymentMemberByName">
+        SELECT `name`, uid, user_id AS userId
+        FROM user
+        WHERE company_id = #{companyId}
+        AND name LIKE CONCAT('%', #{name}, '%')
+        LIMIT #{size} OFFSET #{startIdx}
+    </select>
+
+    <update id="updPaymentAmount">
+        UPDATE user_payment_member
+        SET point = #{point}
+        WHERE order_id = #{orderId}
+        AND user_id = #{userId}
+        AND approval_status = 0
+    </update>
+
+    <delete id="deletePaymentMember">
+        DELETE FROM user_payment_member
+        WHERE order_id = #{orderId}
+        AND user_id = #{userId}
+        AND approval_status = 1
+    </delete>
+
+    <select id="getPaymentMember">
+        SELECT
+        b.reservation_people_count AS reservationPeopleCount
+        FROM `order` a
+        INNER JOIN reservation b ON a.order_id = b.order_id
+        WHERE a.order_id = #{orderId}
+    </select>
+
+    <select id="getPaymentInfo">
+        SELECT
+        d.restaurant_name AS restaurantName
+        , a.`point`
+        , e.name
+        , (SELECT f.name
+        FROM user f
+        INNER JOIN `order` g ON f.user_id = g.user_id
+        WHERE g.user_id = #{orderUserId} AND g.order_id = #{orderId}) AS orderUserName
+        FROM user_payment_member a
+        INNER JOIN `order` c ON a.order_id = c.order_id
+        INNER JOIN restaurant d ON c.restaurant_id = d.restaurant_id
+        INNER JOIN user e ON e.user_id = a.user_id
+        WHERE a.order_id = #{orderId}
+        AND a.user_id = #{userId}
+    </select>
+
+    <select id="getOrderPrice">
+        SELECT
+        b.price
+        FROM `order` a
+        LEFT OUTER JOIN order_detail b ON a.order_id = b.order_id
+        WHERE a.order_id = #{orderId}
+    </select>
+
+
+    <insert id="insertPaymentMember">
+        INSERT INTO user_payment_member (
+        order_id
+        , user_id
+        , point
+        , approval_status
+        ) VALUES (
+        #{orderId}
+        , #{userId}
+        , #{point}
+        , 0
+        )
+    </insert>
+
+    <update id="patchPaymentMember">
+        UPDATE user_payment_member
+        SET approval_status = #{approvalStatus}
+        , select_date = NOW()
+        WHERE order_id = #{orderId}
+        AND user_id = #{userId}
+    </update>
+
+    <insert id="postPaymentMember">
+        INSERT INTO user_payment_member (order_id, user_id, point, approval_status)
+        VALUES
+        <foreach collection="p" item="paymentMember" separator=",">
+            (#{paymentMember.orderId}, #{paymentMember.userId}, #{paymentMember.point}, #{paymentMember.approvalStatus})
+        </foreach>
+    </insert>
+
+    <select id="selUserPaymentMemberByOrderId">
+        SELECT order_id AS orderId, user_id AS userId, select_date AS selectDate
+        , point, approval_status AS approvalStatus, created_at AS createdAt, updated_at AS updatedAt
+        FROM user_payment_member
+        WHERE order_id = #{orderId}
+    </select>
+
+    <select id="selUserPaymentMemberByOrderIdAndUserId">
+        SELECT order_id AS orderId, user_id AS userId, select_date AS selectDate
+        , point, approval_status AS approvalStatus, created_at AS createdAt, updated_at AS updatedAt
+        FROM user_payment_member
+        WHERE order_id = #{orderId}
+        AND user_id = #{userId}
+    </select>
+
+    <select id="selUserOrderApprovalAccess">
+        SELECT B.name, B.uid, A.approval_status AS approvalStatus, A.`point`, A.user_id AS userId, B.`point` AS userPoint
+        FROM user_payment_member A
+        INNER JOIN user B
+        ON A.user_id = B.user_id
+        WHERE A.order_id = #{orderId};
+    </select>
+
+    <update id="updUserPoint">
+        UPDATE `user`
+        SET `point` = `point` - #{point}
+        WHERE user_id = #{userId};
+    </update>
+
+    <select id="sumMenuPrice">
+        SELECT IFNULL(SUM(B.price * B.menu_count), 0) AS MenuPrice
+        FROM `order` A
+        INNER JOIN order_detail B
+        ON A.order_id = B.order_id
+        WHERE B.order_id = #{orderId};
+    </select>
+
+    <insert id="insTicket" useGeneratedKeys="true" keyProperty="ticketId">
+        INSERT ticket
+        SET order_id = #{orderId}
+        , expired_date = DATE_ADD(
+        IFNULL ((
+        SELECT B.reservation_time
+        FROM `order` A
+        INNER JOIN reservation B
+        ON A.order_id = B.order_id
+        WHERE A.order_id = #{orderId}
+        ), NOW()), INTERVAL 2 HOUR);
+    </insert>
+
+    <select id="selUserPaymentMember">
+        SELECT B.name, B.uid, A.approval_status AS approvalStatus, A.`point`, A.user_id AS userId
+        FROM user_payment_member A
+        INNER JOIN user B
+        ON A.user_id = B.user_id
+        WHERE A.order_id = #{orderId};
+    </select>
+    
+    <select id="selUserPaymentMemberCount">
+        SELECT COUNT(*)
+        FROM user_payment_member
+        WHERE order_id = #{orderId}
+        AND user_id = #{userId}
+    </select>
+</mapper>

@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.green.attaparunever2.restaurant.RestaurantMapper">
+
+    <select id="getReview">
+        SELECT
+        A.order_id AS orderId,
+        B.nick_name AS nickName,
+        B.user_pic AS userPic,
+        B.user_id AS userId,
+        C.rating AS rating,
+        C.review_text AS reviewText, C.created_at AS createdAt,
+        G.comment_text AS commentText, G.created_at AS commentCreatedAt
+        FROM `order` A
+        JOIN `user` B ON A.user_id = B.user_id
+        JOIN review C ON A.order_id = C.order_id
+        LEFT JOIN review_comment G ON A.order_id = G.order_id
+        JOIN restaurant F ON A.restaurant_id = F.restaurant_id
+        WHERE A.restaurant_id = #{restaurantId}
+        <if test="startDate != null and endDate != null">
+            AND
+            (
+            DATE_FORMAT(A.created_at, '%Y-%m-%d')
+            <![CDATA[ >= ]]>
+            #{startDate}
+            AND DATE_FORMAT(A.created_at, '%Y-%m-%d')
+            <![CDATA[ <= ]]>
+            #{endDate}
+            )
+        </if>
+
+        <if test="startDate != null and endDate == null">
+            AND
+            (
+            DATE_FORMAT(A.created_at, '%Y-%m-%d')
+            <![CDATA[ >= ]]>
+            #{startDate}
+            )
+        </if>
+
+        <if test="startDate == null and endDate != null">
+            AND
+            (
+            DATE_FORMAT(A.created_at, '%Y-%m-%d')
+            <![CDATA[ <= ]]>
+            #{endDate}
+            )
+        </if>
+        ORDER BY C.created_at DESC
+        LIMIT #{size} OFFSET #{startIdx}
+    </select>
+
+    <select id="getReviewPic">
+        SELECT review_pic AS reviewPic
+        FROM review_pic
+        WHERE order_id = #{orderId}
+    </select>
+
+    <select id="getMenuName">
+        SELECT F.menu_name AS menuName
+        FROM restaurant_menu F
+        JOIN order_detail E ON E.menu_id = F.menu_id
+        WHERE E.order_id = #{orderId}
+    </select>
+
+    <select id="getCountByRating">
+        SELECT A.rating, COUNT(*) AS `count`
+        FROM review A
+        INNER JOIN `order` B ON A.order_id = B.order_id
+        AND B.restaurant_id = #{restaurantId}
+        GROUP BY A.rating
+        ORDER BY A.rating DESC
+    </select>
+
+    <select id="getRestaurantName">
+        SELECT DISTINCT C.restaurant_name
+        FROM review A
+        JOIN `order` B ON A.order_id = B.order_id
+        JOIN restaurant C ON B.restaurant_id = C.restaurant_id
+        WHERE C.restaurant_id = #{restaurantId}
+    </select>
+
+    <select id="getAvgRating">
+        SELECT IFNULL(ROUND(AVG(A.rating), 1), 0.0)
+        FROM review A
+        JOIN `order` B ON A.order_id = B.order_id
+        JOIN restaurant C ON B.restaurant_id = C.restaurant_id
+        WHERE C.restaurant_id = #{restaurantId};
+    </select>
+
+</mapper>

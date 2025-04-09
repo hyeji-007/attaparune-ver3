@@ -1,0 +1,76 @@
+#??? ??? ??? ??? ??(swagger ? jwt)
+constant:
+  jackson:
+    date-format: yyyy-MM-dd
+    datetime-format: yyyy-MM-dd HH:mm:ss
+  info-const:
+    title: AttaParune(아따 빠르네)
+    description: 아따 빠르네 직장인 테이블링 웹 서비스
+    version: v3
+
+  jwt-const:
+    issuer: green@green.kr #?? ???
+    secret: DaeguGreenArtAcademyClass502RoomForJavaSpringBootFighting
+    header-key: Authorization
+    claim-key: signedUser
+    bearer-format: JWT
+    scheme: Bearer
+    access-token-expiry: 86_400_000 #1일 (MS)
+    refresh-token-expiry: 1_296_000_000 # 15일 (MS)
+    refresh-token-cookie-name: refresh-token
+    refresh-token-cookie-expiry: 1_296_000 #15? (S)
+
+#??? ??? ??? ??? ??
+
+# ?? ????? ?? ??
+file:
+  directory: D:/SGSG/download/attaParune
+
+#???? ?? ???
+const:
+  default-page-size: 20
+
+
+#?????? ??
+spring:
+  application:
+    name: attaParuneVer3
+  config:
+    import: "classpath:application-secret.yml"
+  #File ??? ??
+  servlet:
+    multipart:
+      max-file-size: 50MB
+  web:
+    resources:
+      static-locations: classpath:/static/, classpath:/public/
+  jpa:
+    database: mysql
+    hibernate:
+      #ddl-auto: create #entity를 서버 기동때마다 drop 후 create 한다.
+      ddl-auto: update #entity가 없으면 create, 기존 존재하는 entity는 컬럼을 새롭게 추가하는 것만 반영
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 5
+        format_sql: true
+        order_updates: true
+    show-sql: true
+
+#MyBatis ??
+mybatis:
+  mapper-locations: mappers/**/*.xml
+
+
+
+#Swagger ??
+springdoc:
+  swagger-ui:
+    default-model-expand-depth: 10
+    display-request-duration: true
+    groups-order: asc
+    operations-sorter: method
+    path: /swagger
+    tags-sorter: alpha
+  cache:
+    disabled: true

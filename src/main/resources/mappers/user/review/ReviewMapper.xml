@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.green.attaparunever2.user.ReviewMapper">
+
+    <select id="getReviewList">
+        SELECT A.order_id AS orderId
+        , C.restaurant_name AS restaurantName
+        , A.rating
+        , A.review_text AS reviewText
+        , A.created_at AS createdAt
+        , C.restaurant_id AS restaurantId
+        , D.comment_text AS commentText
+        , D.created_at AS commentCreatedAt
+        FROM review A
+        JOIN `order` B ON A.order_id = B.order_id
+        JOIN restaurant C ON B.restaurant_id = C.restaurant_id
+        LEFT JOIN review_comment D ON A.order_id = D.order_id
+        <where>
+            B.user_id = #{userId}
+
+            <if test="startDate != null and endDate != null">
+                AND
+                (
+                DATE_FORMAT(A.created_at, '%Y-%m-%d')
+                <![CDATA[ >= ]]>
+                #{startDate}
+                AND DATE_FORMAT(A.created_at, '%Y-%m-%d')
+                <![CDATA[ <= ]]>
+                #{endDate}
+                )
+            </if>
+
+            <if test="startDate != null and endDate == null">
+                AND
+                (
+                DATE_FORMAT(A.created_at, '%Y-%m-%d')
+                <![CDATA[ >= ]]>
+                #{startDate}
+                )
+            </if>
+
+            <if test="startDate == null and endDate != null">
+                AND
+                (
+                DATE_FORMAT(A.created_at, '%Y-%m-%d')
+                <![CDATA[ <= ]]>
+                #{endDate}
+                )
+            </if>
+        </where>
+        ORDER BY A.created_at DESC
+        LIMIT #{size} OFFSET #{startIdx}
+    </select>
+
+    <select id="getRestaurantPic">
+        SELECT pic_name AS picName
+        FROM restaurant_pic
+        WHERE restaurant_id = (
+        SELECT restaurant_id
+        FROM `order`
+        WHERE order_id = #{orderId}
+        )
+        LIMIT 1
+    </select>
+
+    <select id="getMenuList">
+        SELECT DISTINCT F.menu_name AS menuName
+        FROM order_detail E
+        JOIN restaurant_menu F ON E.menu_id = F.menu_id
+        WHERE E.order_id = #{orderId}
+    </select>
+
+    <select id="getReviewPicList">
+        SELECT review_pic AS reviewPic
+        FROM review_pic
+        WHERE order_id = #{orderId}
+    </select>
+</mapper>

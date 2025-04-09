@@ -1,0 +1,414 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.green.attaparunever2.user.UserMapper">
+    <insert id="insUserEmailVerification">
+        INSERT INTO user_email_verification
+        SET user_id = #{userId}
+        , token = #{token}
+        , expired_date = CURRENT_TIMESTAMP + INTERVAL 30 MINUTE
+    </insert>
+
+    <select id="selUserEmailVerificationByUId">
+        SELECT A.user_id AS userId, token, expired_date AS expiredDate, A.created_at AS createdAt
+        FROM user_email_verification A
+        WHERE user_id = (
+            SELECT user_id
+            FROM user
+            WHERE uid = #{UId}
+        )
+    </select>
+
+    <select id="selUserEmailVerificationByUserId">
+        SELECT user_id AS userId, token, expired_date AS expiredDate, created_at  AS createdAt
+        FROM user_email_verification
+        WHERE user_id = #{userId}
+    </select>
+
+    <delete id="delUserEmailVerification">
+        DELETE FROM user_email_verification
+        WHERE user_id = #{userId}
+    </delete>
+
+    <insert id="insUser" useGeneratedKeys="true" keyProperty="userId">
+        INSERT INTO user
+        SET uid = #{uid}
+        , company_id = #{companyId}
+        , role_id = 'ROLE_USER'
+        , upw = #{upw}
+        , name = #{name}
+        <if test="pic != null">
+            , pic = #{pic}
+        </if>
+        , email = #{email}
+        , phone = #{phone}
+    </insert>
+
+    <select id="selUserByUid">
+        SELECT A.user_id AS userId,  B.name AS companyName
+        , A.company_id AS companyId
+        , A.code AS code
+        , A.uid, A.upw, A.name, A.user_pic
+        , A.email, A.phone, A.point
+        FROM user A INNER JOIN company B
+        ON A.company_id = B.company_id
+        WHERE A.uid = #{id}
+    </select>
+
+    <select id="selUserByUserId">
+        SELECT A.user_id AS userId,  B.name AS companyName
+        , A.company_id AS companyId
+        , A.uid, A.upw, A.name, A.user_pic AS userPic
+        , A.email, A.phone, A.point
+        FROM user A INNER JOIN company B
+        ON A.company_id = B.company_id
+        WHERE A.user_id = #{userId}
+    </select>
+
+    <select id="selUserByEmailAndName">
+        SELECT A.user_id AS userId,  B.name AS companyName
+        , A.company_id AS companyId
+        , A.code
+        , A.uid, A.upw, A.name, A.user_pic AS pic
+        , A.email, A.phone, A.point
+        FROM user A INNER JOIN company B
+        ON A.company_id = B.company_id
+        WHERE A.email = #{email}
+        AND A.name = #{name}
+    </select>
+
+    <delete id="delUser">
+        DELETE FROM user
+        WHERE user_id = #{userId}
+    </delete>
+
+    <!-- 진행 주문 내역 : 신권생성이 되고 사용이 안된 -->
+    <select id="selUserActiveOrderCheck">
+        SELECT A.order_id AS orderId, A.restaurant_id AS restaurantId, B.restaurant_name AS restaurantName, C.category_name AS categoryName
+        , A.created_at AS orderDate, E.user_id AS reservationUserId
+        , E.`name` AS reservationUserName, E.phone AS reservationUserPhone
+        , D.reservation_time AS reservationTime, D.reservation_people_count AS reservationPeopleCount
+        , ticket_id AS ticketId
+        , A.reservation_yn AS reservationYn
+        , A.reservation_status AS reservationStatus
+        , A2.user_id AS orderUserId, A2.`name` AS orderUserName, A2.phone AS orderUserPhone
+        FROM `order` A INNER JOIN user A2
+        ON A.user_id = A2.user_id
+        INNER JOIN restaurant B
+        ON A.restaurant_id = B.restaurant_id
+        INNER JOIN restaurant_category C
+        ON B.category_id = C.category_id
+        LEFT JOIN reservation D
+        ON A.order_id = D.order_id
+        LEFT JOIN user E
+        ON A.user_id = E.user_id
+        AND A.order_id = D.order_id
+        LEFT JOIN ticket F
+        ON A.order_id = F.order_id
+        WHERE A.user_id = #{userId}
+        AND A.reservation_status IN(0, 1)
+        AND (F.ticket_status = 0 OR F.ticket_status IS NULL)
+        ORDER BY A.order_id DESC
+        LIMIT 1
+    </select>
+
+    <!-- 지난 주문 내역 : 식권사용이 완료된 -->
+    <select id="selUserPastOrderCheck">
+        SELECT C.restaurant_name AS restaurantName, D.file_path AS filePath, A.reservation_yn AS reservationYn
+             , GROUP_CONCAT(DISTINCT F.menu_name SEPARATOR ', ') AS menuName, SUM(E.menu_count * F.price) AS menuTotalPrice
+             , E.menu_count AS menuCount
+             , A.created_at AS createdAt
+             , A.restaurant_id AS restaurantId
+            , G.ticket_id AS ticketId
+          FROM `order` A
+         INNER JOIN restaurant C
+            ON A.restaurant_id = C.restaurant_id
+          LEFT JOIN restaurant_pic D
+            ON C.restaurant_id = D.restaurant_id
+         INNER JOIN order_detail E
+            ON A.order_id = E.order_id
+         INNER JOIN restaurant_menu F
+            ON E.menu_id = F.menu_id
+         INNER JOIN ticket G
+            ON A.order_id = G.order_id
+            AND G.ticket_status = 1
+         WHERE A.user_id = #{userId}
+         GROUP BY A.order_id DESC
+    </select>
+
+    <select id="getUserOrderVer2">
+        SELECT
+        A.restaurant_name AS restaurantName,
+        F.order_id AS orderId,
+        B.category_name AS categoryName,
+        E.created_at AS createdAt,
+        G.reservation_people_count AS reservationPeopleCount,
+        G.reservation_time AS reservationTime,
+        H.name AS userName,
+        H.phone AS userPhone,
+        SUM(E.menu_count * D.price) AS menuTotalPrice,
+        F.reservation_yn AS reservationYn
+        FROM restaurant A
+        INNER JOIN restaurant_category B ON A.category_id = B.category_id
+        INNER JOIN restaurant_menu_category C ON A.restaurant_id = C.restaurant_id
+        INNER JOIN restaurant_menu D ON C.category_id = D.category_id
+        INNER JOIN order_detail E ON D.menu_id = E.menu_id
+        INNER JOIN `order` F ON E.order_id = F.order_id
+        INNER JOIN reservation G ON F.order_id = G.order_id
+        INNER JOIN user H ON F.user_id = H.user_id
+        INNER JOIN ticket I ON I.order_id = F.order_id
+        WHERE H.user_id = #{signedUserId}
+        AND F.reservation_yn = 1
+        AND F.reservation_status = 1
+        AND ticket_status = 0
+        GROUP BY F.order_id
+    </select>
+
+
+    <!-- <select id="getUserOrderVer2MenuList">
+        SELECT
+        B.order_detail_id AS orderDetailId,
+        A.menu_id AS menuId,
+        A.menu_name AS menuName,
+        B.menu_count AS menuCount,
+        (A.price * B.menu_count) AS menuPrice
+        FROM restaurant_menu A
+        INNER JOIN order_detail B ON A.menu_id = B.menu_id
+        INNER JOIN `order` C ON C.order_id = B.order_id
+        INNER JOIN restaurant_menu_category D ON A.category_id = D.category_id
+        INNER JOIN restaurant E ON E.restaurant_id = D.restaurant_id
+        INNER JOIN restaurant_category F ON E.category_id = F.category_id
+        WHERE C.user_id = #{signedUserId}
+        GROUP BY B.order_detail_id
+    </select> -->
+
+    <update id="patchUpw">
+        UPDATE user
+        <set>
+            <if test="newUpw != null and newUpw != ''">
+                upw = #{newUpw}
+            </if>
+        </set>
+        WHERE user_id = #{userId}
+    </update>
+
+    <select id="getSignedUserGetOrder">
+        SELECT order_id AS orderId
+        FROM `order`
+        WHERE user_id = #{userId}
+        ORDER BY created_at DESC
+        LIMIT 1
+    </select>
+    <!-- 완료된 예약에 대한 리스트 -->
+    <!--
+    <select id="selUserReservationAlertByUserId">
+        SELECT A.reservation_id AS reservationId, A.reservation_time AS reservationTime
+        , A.reservation_people_count AS reservationPeopleCount, B.reservation_status AS reservationStatus
+        , B.restaurant_id AS restaurantId, C.restaurant_name AS restaurantName, A.order_id AS orderId
+        FROM reservation A INNER JOIN `order` B
+        ON A.order_id = B.order_id
+        INNER JOIN restaurant C
+        ON B.restaurant_id = C.restaurant_id
+        WHERE B.user_id = #{userId}
+        AND B.reservation_status = 1
+        AND A.order_id = (
+        SELECT D.order_id FROM ticket D WHERE D.order_id = A.order_id
+        )
+    </select>
+    -->
+    <!-- 예약은 완료 되었는데 식권이 생성 안된 경우 -->
+    <select id="selUserReservationAlertByUserId">
+        SELECT A.reservation_id AS reservationId, A.reservation_time AS reservationTime
+        , A.reservation_people_count AS reservationPeopleCount, B.reservation_status AS reservationStatus
+        , B.restaurant_id AS restaurantId, C.restaurant_name AS restaurantName, B.order_id AS orderId, '인원 선택 메세지' AS message
+        FROM `order` B LEFT JOIN reservation A
+        ON B.order_id = A.order_id
+        INNER JOIN restaurant C
+        ON B.restaurant_id = C.restaurant_id
+        WHERE B.user_id = #{userId}
+        AND((B.reservation_yn = 1 AND B.reservation_status = 1) OR (B.reservation_yn = 0 AND B.reservation_status = 1))
+        AND (
+        SELECT D.order_id FROM ticket D WHERE D.order_id = B.order_id LIMIT 1
+        ) IS NULL
+        AND (SELECT COUNT(*) FROM user_payment_member E WHERE E.order_id = B.order_id) = 0
+    </select>
+
+    <select id="selUserUserPaymentMemberAlertByUserId">
+        SELECT A.reservation_id AS reservationId, A.reservation_time AS reservationTime
+        , A.reservation_people_count AS reservationPeopleCount, B.reservation_status AS reservationStatus
+        , B.restaurant_id AS restaurantId, C.restaurant_name AS restaurantName, B.order_id AS orderId, '식권 생성 요청 메세지' AS message
+        FROM `order` B LEFT JOIN reservation A
+        ON B.order_id = A.order_id
+        INNER JOIN restaurant C
+        ON B.restaurant_id = C.restaurant_id
+        WHERE B.user_id = #{userId}
+        AND((B.reservation_yn = 1 AND B.reservation_status = 1) OR (B.reservation_yn = 0 AND B.reservation_status = 0))
+        AND (
+        SELECT D.order_id FROM ticket D WHERE D.order_id = B.order_id LIMIT 1
+        ) IS NULL
+        AND (SELECT COUNT(*) FROM user_payment_member E WHERE E.order_id = B.order_id) <![CDATA[>]]> 0
+    </select>
+
+    <!-- 예약은 허용 됐는데 사용자가 생성되지 않은 경우 -->
+    <!--
+    <select id="selUserReservationAlertByUserId">
+        SELECT A.reservation_id AS reservationId, A.reservation_time AS reservationTime
+        , A.reservation_people_count AS reservationPeopleCount, B.reservation_status AS reservationStatus
+        , B.restaurant_id AS restaurantId, C.restaurant_name AS restaurantName, A.order_id AS orderId
+        FROM reservation A INNER JOIN `order` B
+        ON A.order_id = B.order_id
+        INNER JOIN restaurant C
+        ON B.restaurant_id = C.restaurant_id
+        WHERE B.user_id = 16
+        AND B.reservation_status = 1
+        <![CDATA[
+        AND A.reservation_people_count <> (
+        SELECT COUNT(*) FROM user_payment_member D WHERE D.order_id = A.order_id AND D.approval_status = 1
+        )
+        ]]>
+    </select>
+    -->
+
+    <select id="selUserPaymentAlertByUserId">
+        SELECT B.user_id AS orderUserId, C.`name`  AS orderUserName, A.order_id AS orderId
+        , A.approval_status AS approvalStarus, A.`point`, A.created_at AS paymentCreatedAt, '나한테 온 승인요청 메세지' AS message
+        FROM user_payment_member A INNER JOIN `order` B
+        ON A.order_id = B.order_id
+        INNER JOIN `user` C
+        ON B.user_id = C.user_id
+        WHERE A.approval_status = 0
+        AND A.user_id = #{userId}
+    </select>
+
+    <!-- 2차 개선 코드 -->
+
+    <!-- 결재 사용자 추가화면 사용자 리스트 조회 -->
+    <select id="selCompanyUserByUserId">
+        SELECT A.`name`, A.uid, A.user_id AS userId
+        FROM user A
+        WHERE A.company_id = (
+            SELECT B.company_id
+            FROM user B
+            WHERE B.user_id = #{userId}
+        )
+        AND A.user_id <![CDATA[<>]]> #{userId}
+        <if test="searchText != null and searchText != ''">
+            AND A.name LIKE '%${searchText}%'
+        </if>
+        ORDER BY A.`name` ASC
+        LIMIT #{size} OFFSET #{startIdx}
+    </select>
+
+    <!-- 사용자 정보 조회 -->
+    <select id="selUserByUserIdV3">
+        SELECT A.user_id AS userId
+        , B.name AS companyName
+        , A.company_id AS companyId
+        , A.nick_name AS nickName
+        , A.uid, A.name, A.user_pic AS userPic
+        , A.email, A.phone, A.point
+        FROM user A INNER JOIN company B
+        ON A.company_id = B.company_id
+        WHERE A.user_id = #{userId}
+    </select>
+
+    <!-- 지난 주문 내역 : 식권사용이 완료된 -->
+    <select id="selOrderPastByUserIdV3">
+        SELECT A.restaurant_id AS restaurantId, B.restaurant_name AS restaurantName
+        , A.created_at AS orderDate, A.reservation_yn AS reservationYn
+        , (
+        SELECT COUNT(*)
+        FROM review X
+        WHERE A.order_id = X.order_id
+        ) AS review_yn
+        FROM `order` A
+        INNER JOIN restaurant B
+        ON A.restaurant_id = B.restaurant_id
+        INNER JOIN ticket C
+        ON A.order_id = C.order_id
+        AND C.ticket_status = 1
+        WHERE A.user_id = #{userId}
+        ORDER BY orderDate DESC
+    </select>
+
+    <!-- 진행 중인 주문 내역 -->
+    <select id="getUserOrderPresentVer2">
+        SELECT
+        A.restaurant_name AS restaurantName,
+        F.order_id AS orderId,
+        B.category_name AS categoryName,
+        E.created_at AS createdAt,
+        G.reservation_people_count AS reservationPeopleCount,
+        G.reservation_time AS reservationTime,
+        H.name AS userName,
+        H.phone AS userPhone,
+        SUM(E.menu_count * D.price) AS menuTotalPrice,
+        F.reservation_yn AS reservationYn
+        FROM restaurant A
+        INNER JOIN restaurant_category B ON A.category_id = B.category_id
+        INNER JOIN restaurant_menu_category C ON A.restaurant_id = C.restaurant_id
+        INNER JOIN restaurant_menu D ON C.category_id = D.category_id
+        INNER JOIN order_detail E ON D.menu_id = E.menu_id
+        INNER JOIN `order` F ON E.order_id = F.order_id
+        INNER JOIN reservation G ON F.order_id = G.order_id
+        INNER JOIN user H ON F.user_id = H.user_id
+        INNER JOIN ticket I ON I.order_id = F.order_id
+        WHERE H.user_id = #{signedUserId}
+        AND F.reservation_yn = 1
+        AND F.reservation_status = 1
+        AND ticket_status = 0
+        GROUP BY F.order_id
+    </select>
+
+    <select id="getUserOrderVer2MenuList">
+        SELECT
+        B.order_detail_id AS orderDetailId,
+        A.menu_id AS menuId,
+        A.menu_name AS menuName,
+        B.menu_count AS menuCount,
+        (A.price * B.menu_count) AS menuPrice
+        FROM restaurant_menu A
+        INNER JOIN order_detail B ON A.menu_id = B.menu_id
+        INNER JOIN `order` C ON C.order_id = B.order_id
+        INNER JOIN restaurant_menu_category D ON A.category_id = D.category_id
+        INNER JOIN restaurant E ON E.restaurant_id = D.restaurant_id
+        INNER JOIN restaurant_category F ON E.category_id = F.category_id
+        WHERE C.user_id = #{signedUserId}
+        GROUP BY B.order_detail_id
+    </select>
+
+    <select id="selUserOrderPastCheck">
+        SELECT A.restaurant_id AS restaurantId, B.order_id AS orderId
+        , A.restaurant_name AS restaurantName
+        , B.created_at AS createdAt, B.reservation_yn AS reservationYn
+        , (SUM(C.menu_count * C.price)) AS menuTotalPrice
+        , IFNULL((SELECT 1 FROM review B WHERE B.order_id = D.order_id LIMIT 1), 0) AS reviewStatus
+        , (E.use_date <![CDATA[<=]]> NOW() - INTERVAL 24 HOUR) AS is24hourLeft
+        , (SELECT F.pic_name FROM restaurant_pic F WHERE F.restaurant_id = A.restaurant_id LIMIT 1) AS pic
+        FROM restaurant A
+        LEFT JOIN `order` B
+        ON A.restaurant_id = B.restaurant_id
+        LEFT JOIN order_detail C
+        ON B.order_id = C.order_id
+        LEFT JOIN review D
+        ON B.order_id = D.order_id
+        INNER JOIN ticket E
+        ON B.order_id = E.order_id
+        WHERE B.user_id = #{signedUserId}
+        AND E.ticket_status = 1
+        GROUP BY B.order_id
+        ORDER BY B.created_at DESC
+    </select>
+
+    <select id="selUserOrderMenuPastCheck">
+        SELECT A.menu_id AS menuId, A.menu_name AS menuName, A.price , B.menu_count AS menuCount
+        FROM restaurant_menu A
+        INNER JOIN order_detail B
+        ON A.menu_id = B.menu_id
+        INNER JOIN `order` C
+        ON B.order_id = C.order_id
+        WHERE C.order_id = #{orderId}
+    </select>
+
+</mapper>

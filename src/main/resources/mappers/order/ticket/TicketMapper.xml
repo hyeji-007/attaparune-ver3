@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.green.attaparunever2.order.ticket.TicketMapper">
+    <insert id="postTicket" useGeneratedKeys="true" keyProperty="ticketId">
+        INSERT INTO ticket
+        SET order_id = #{orderId}
+        , point = #{point}
+        , created_at = #{createdAt}
+    </insert>
+
+    <select id="getUserPoint">
+        SELECT point
+        FROM user_payment_member
+        WHERE user_id = #{userId}
+    </select>
+
+    <select id="selTicketOne">
+        SELECT B.ticket_id
+        FROM `order` A
+        INNER JOIN ticket B
+        ON A.order_id = B.order_id
+        WHERE user_id = #{userId}
+        ORDER BY B.created_at DESC
+        LIMIT 1;
+    </select>
+
+<!--    <select id="getTicket">-->
+<!--        SELECT-->
+<!--        D.restaurant_name AS restaurantName,-->
+<!--        SUM(OD.menu_count) AS menuCount,-->
+<!--        SUM(OD.menu_count * OD.price) AS totalOrderAmount,-->
+<!--        E.reservation_people_count AS personCount,-->
+<!--        E.reservation_time AS reservationTime,-->
+<!--        GROUP_CONCAT(DISTINCT F.menu_name SEPARATOR ', ') AS menuNames-->
+<!--        FROM `order` C-->
+<!--        INNER JOIN restaurant D-->
+<!--        ON C.restaurant_id = D.restaurant_id-->
+<!--        LEFT JOIN order_detail OD-->
+<!--        ON C.order_id = OD.order_id-->
+<!--        LEFT JOIN reservation E-->
+<!--        ON C.order_id = E.order_id-->
+<!--        INNER JOIN restaurant_menu F-->
+<!--        ON OD.menu_id = F.menu_id-->
+<!--        INNER JOIN ticket G-->
+<!--        ON C.order_id = G.order_id-->
+<!--        WHERE G.ticket_id = #{ticketId}-->
+<!--        GROUP BY C.order_id-->
+<!--    </select>-->
+
+    <select id="getTicket">
+        SELECT
+        D.restaurant_name AS restaurantName,
+        D.restaurant_id AS restaurantId,
+        SUM(OD.menu_count) AS menuCount,
+        SUM(OD.price * OD.menu_count) AS totalAmount,
+        E.reservation_people_count AS personCount,
+        OD.created_at AS reservationTime,
+        GROUP_CONCAT(DISTINCT F.menu_name SEPARATOR ', ') AS menuNames
+        , G.ticket_status AS ticketStatus
+        FROM `order` C
+        INNER JOIN restaurant D
+        ON C.restaurant_id = D.restaurant_id
+        LEFT JOIN order_detail OD
+        ON C.order_id = OD.order_id
+        LEFT JOIN reservation E
+        ON C.order_id = E.order_id
+        INNER JOIN restaurant_menu F
+        ON OD.menu_id = F.menu_id
+        INNER JOIN ticket G
+        ON C.order_id = G.order_id
+        WHERE G.ticket_id = #{ticketId}
+    </select>
+
+    <delete id="delTicket">
+        DELETE A
+        FROM ticket A
+        INNER JOIN `order` B
+        ON A.order_id = B.order_id
+        INNER JOIN reservation C
+        ON B.order_id = C.order_id
+        WHERE TIMESTAMPDIFF(HOUR, C.created_at, NOW()) &lt;= 1
+        AND A.order_id = #{orderId}
+    </delete>
+
+    <select id="selTicketByOrderId">
+        SELECT ticket_id AS ticketId, order_id AS orderId, expired_date AS expiredDate
+        , ticket_status AS ticketStatus, use_date AS useDate, created_at AS createdAt
+        FROM ticket
+        WHERE order_id = #{orderId}
+    </select>
+
+    <update id="updTicket">
+        UPDATE ticket
+        SET ticket_status = 1
+          , use_date = NOW()
+        WHERE ticket_id = #{ticketId}
+    </update>
+
+    <select id="selTicketUseDate">
+        SELECT use_date AS useDate, ticket_id AS ticketId
+        FROM ticket
+        WHERE ticket_id = #{ticketId}
+    </select>
+
+    <select id="selTicketByTicketId">
+        SELECT ticket_id AS ticketId, order_id AS orderId, expired_date AS expiredDate, ticket_status AS ticketStatus, use_date AS useDate
+        FROM ticket
+        WHERE ticket_id = #{ticketId}
+    </select>
+
+    <!-- 정산 되지 않은 티켓 리스트 조회 -->
+    <select id="selTicketNotInSettlementList">
+        SELECT A.ticket_id AS ticketId, A.created_at AS createdAt, A.expired_date AS expiredDate
+        , A.use_date AS useDate, A.order_id AS orderId
+        FROM ticket A
+        WHERE A.ticket_id NOT IN(
+            SELECT B.ticket_id
+            FROM settlement_list B
+        )
+        AND A.ticket_status = 1
+    </select>
+</mapper>

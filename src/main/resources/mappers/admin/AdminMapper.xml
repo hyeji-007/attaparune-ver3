@@ -1,0 +1,281 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.green.attaparunever2.admin.AdminMapper">
+    <insert id="insAdminEmailVerification">
+        INSERT INTO admin_email_verification
+        SET admin_id = #{adminId}
+        , token = #{token}
+        , expired_date = CURRENT_TIMESTAMP + INTERVAL 30 MINUTE
+    </insert>
+
+    <select id="selAdminEmailVerificationByAId">
+        SELECT admin_id AS adminId, token, expired_date AS expiredDate, created_at AS createdAt
+        FROM admin_email_verification A
+        WHERE admin_id = (
+        SELECT admin_id
+        FROM admin
+        WHERE aid = #{aid}
+        )
+    </select>
+
+    <select id="selAdminEmailVerificationByAdminId">
+        SELECT admin_id AS adminId, token, expired_date AS expiredDate, created_at  AS createdAt
+        FROM admin_email_verification
+        WHERE admin_id = #{adminId}
+    </select>
+
+    <delete id="delAdminEmailVerification">
+        DELETE FROM admin_email_verification
+        WHERE admin_id = #{adminId}
+    </delete>
+    
+    <insert id="insAdmin" useGeneratedKeys="true" keyProperty="adminId">
+        INSERT INTO `admin`
+           SET `code` = 00103
+             , aid = #{aid}
+             , apw = #{apw}
+             , `name` = #{name}
+             , email = #{email}
+             , phone = #{phone}
+    </insert>
+
+    <select id="selAdminByAid">
+        SELECT admin_id AS adminId, code, aid, apw, name, email, phone
+        , (
+        SELECT restaurant_id
+        FROM restaurant
+        WHERE admin_id = A.admin_id
+        LIMIT 1
+        ) AS restaurantId
+        FROM admin A
+        WHERE aid = #{id}
+    </select>
+
+    <select id="selAdminByAdminId">
+        SELECT A.admin_id AS adminId, A.code, A.aid, A.apw, A.name, B.name AS role, A.email, A.phone, A.division_id AS companyId
+        FROM admin A INNER JOIN code B
+        ON A.code = B.code
+        WHERE admin_id = #{adminId}
+    </select>
+
+    <select id="selAdminByEmailAndName">
+        SELECT admin_id AS adminId
+        , code, division_id as divisionId
+        , aid, apw, name
+        , email, phone
+        FROM admin
+        WHERE email = #{email}
+        AND name = #{name}
+    </select>
+
+    <delete id="delAdmin">
+        DELETE FROM admin
+        WHERE admin_id = #{adminId}
+    </delete>
+
+    <update id="patchUpw">
+        UPDATE admin
+        <set>
+            <if test="newUpw != null and newUpw != ''">
+                apw = #{newUpw}
+            </if>
+        </set>
+        WHERE admin_id = #{adminId}
+    </update>
+
+    <select id="getCompanyPayment">
+        SELECT A.created_at AS createdAt, A.cash_amount AS cashAmount, A.point_amount AS cashAmount, A.admin_id AS adminId, C.name AS name
+        FROM company_point_deposit A
+        INNER JOIN  `admin` B
+        ON A.admin_id = B.admin_id
+        INNER JOIN company C
+        ON C.company_id = B.division_id
+        LIMIT #{startIdx}, #{size}
+    </select>
+
+    <select id="getCompanyPaymentTotalCount">
+        SELECT COUNT(*)
+        FROM company_point_deposit A
+        INNER JOIN  `admin` B
+        ON A.admin_id = B.admin_id
+        INNER JOIN company C
+        ON C.company_id = B.division_id
+    </select>
+
+    <insert id="signAdmin" useGeneratedKeys="true" keyProperty="adminId">
+        INSERT INTO `admin`
+        SET `code` = '00103'
+        , aid = #{aid}
+        , apw = #{apw}
+        , `name` = #{name}
+        , email = #{email}
+        , phone = #{phone}
+        , created_at = "2025-02-19 16:18:02.000000"
+    </insert>
+
+    <select id="signInAdminByAid">
+        SELECT admin_id AS adminId, `code` AS code, aid
+             , apw, name, email, phone, division_id AS divisionId
+             , coalition_state AS coalitionState
+          FROM admin A
+         WHERE aid = #{aid}
+    </select>
+
+    <select id="selRefund">
+        SELECT A.refund_amount AS refundAmount, A.refund_point AS refundPoint
+             , A.refund_detail AS refundDetail, A.refund_yn AS refundYn
+             , C.name, A.created_at AS createdAt
+        FROM refund A
+        INNER JOIN `admin` B
+        ON A.admin_id = B.admin_id
+        INNER JOIN company C
+        ON C.company_id = B.division_id
+        LIMIT #{startIdx}, #{size}
+    </select>
+
+    <select id="selRefundTotalCount">
+        SELECT COUNT(*)
+        FROM refund A
+        INNER JOIN `admin` B
+        ON A.admin_id = B.admin_id
+        INNER JOIN company C
+        ON C.company_id = B.division_id
+    </select>
+    
+    <select id="selCompanyEnrollment">
+        SELECT A.company_id AS companyId, A.company_cd AS companyCd, A.name
+             , A.address, A.ceo_name AS ceoName, A.business_number AS businessNumber
+             , A.current_point AS currentPoint, A.created_at AS createdAt
+          FROM company A
+         INNER JOIN admin B
+            ON A.company_id = B.division_id
+         WHERE B.code = '00102'
+         LIMIT #{startIdx}, #{size}
+    </select>
+
+    <select id="selCompanyEnrollmentTotalCount">
+        SELECT COUNT(*)
+        FROM company A
+        INNER JOIN admin B
+        ON A.company_id = B.division_id
+        WHERE B.code = '00102'
+    </select>
+
+    <select id="selRestaurantEnrollment">
+        SELECT A.restaurant_id AS restaurantId, A.category_id AS categoryId
+             , B.category_name AS categoryName, A.restaurant_name AS restaurantName, A.restaurant_number AS restaurantNumber
+             , A.restaurant_address AS restaurantAddress, A.business_number AS businessNumber, C.coalition_state AS coalitionState
+             , A.operating_hours AS operatingHours
+             , A.restaurant_description AS restaurantDescription, A.`status` AS status
+             , A.max_capacity AS maxCapacity
+             , A.lat, A.lng, A.payment_password AS paymentPassword
+             , A.created_at AS createdAt
+          FROM restaurant A
+         INNER JOIN restaurant_category B
+            ON A.category_id = B.category_id
+         INNER JOIN admin C
+            ON A.restaurant_id = C.division_id
+         WHERE C.code = '00101'
+         LIMIT #{startIdx}, #{size}
+    </select>
+
+    <select id="selRestaurantEnrollmentTotalCount">
+        SELECT COUNT(*)
+        FROM restaurant A
+        INNER JOIN restaurant_category B
+        ON A.category_id = B.category_id
+        INNER JOIN admin C
+        ON A.restaurant_id = C.division_id
+        WHERE C.code = '00101'
+    </select>
+    
+    <select id="selOneSystemPost">
+        SELECT A.inquiry_id AS inquiryId, A.id, A.inquiry_title AS inquiryTitle
+             , A.inquiry_detail AS inquiryDetail, A.pic
+             , A.post_code AS postCode, A.role_code AS roleCode
+             , A.created_at AS createdAt
+          FROM system_post A
+         WHERE A.inquiry_id = #{inquiryId}
+    </select>
+
+    <!-- 공지사항 -->
+    <select id="selSystemBoard">
+        SELECT A.post_code AS postCode, A.inquiry_id AS inquiryId
+        , A.inquiry_title AS inquiryTitle
+        , A.role_code AS roleCode, A.created_at AS createdAt
+        FROM system_post A
+        WHERE A.post_code = '00201'
+        ORDER BY A.created_at DESC
+        LIMIT 5
+    </select>
+
+    <!-- 전체 게시글 조회 -->
+    <select id="selSystemPost">
+        SELECT A.post_code AS postCode, A.inquiry_id AS inquiryId
+        , A.inquiry_title AS inquiryTitle
+        , A.role_code AS roleCode, A.created_at AS createdAt
+        FROM system_post A
+        WHERE A.post_code != '00201' AND A.post_code != '00204'
+        ORDER BY A.created_at DESC
+        LIMIT #{size} OFFSET #{startIdx}
+    </select>
+
+    <!-- 자주 묻는 질문 조회 -->
+    <select id="selQuestionBoard">
+        SELECT A.post_code AS postCode, A.inquiry_id AS inquiryId
+        , A.inquiry_title AS inquiryTitle
+        , A.role_code AS roleCode, A.created_at AS createdAt
+        FROM system_post A
+        WHERE A.post_code = '00204'
+        <if test=" searchFilter != null and searchFilter != '' ">
+            AND A.inquiry_title LIKE '%${searchFilter}%'
+        </if>
+        ORDER BY A.created_at DESC
+        LIMIT #{size} OFFSET #{startIdx}
+    </select>
+
+    <!-- 전체 게시글 count: 공지사항, 자주 묻는 질문 제외(공지사항은 무조건 5개) -->
+    <select id="selPostCount">
+        SELECT COUNT(*)
+        FROM system_post
+        WHERE post_code != '00201' AND post_code != '00204'
+    </select>
+
+    <!-- 자주 묻는 질문 count -->
+    <select id="selQuestionCount">
+        SELECT COUNT(*)
+        FROM system_post
+        WHERE post_code = '00204'
+    </select>
+
+    <select id="selCompanyPointHistoryByAdminId">
+        SELECT E.*
+        FROM (
+            SELECT '회사 포인트 구매 정보', A1.deposit_id AS pk, A1.admin_id AS adminId, NULL AS userId, NULL AS `code`, '결재 입금' AS codeName, A1.point_amount AS pointAmount, A1.cash_amount AS cashAmount
+            , C1.company_id AS companyId, A1.created_at AS createdAt
+            FROM company_point_deposit A1 INNER JOIN `admin` B1
+            ON A1.admin_id = B1.admin_id
+            INNER JOIN company C1
+            ON B1.division_id = C1.company_id
+            UNION
+            SELECT '회사 포인트 환불 정보', A2.refund_id AS pk, A2.admin_id AS adminId, NULL AS userId, NULL AS `code`, '결재 환불' AS codeName, A2.refund_point AS pointAmount, NULL AS cashAmount
+            , C2.company_id AS companyId, A2.created_at AS createdAt
+            FROM refund A2 INNER JOIN `admin` B2
+            ON A2.admin_id = B2.admin_id
+            INNER JOIN company C2
+            ON B2.division_id = C2.company_id
+            UNION
+            SELECT '사용자 포인트 입금 정보', A3.deposit_id AS pk, A3.admin_id AS adminId, A3.user_id AS userId, A3.`code` AS `code`, D3.`name` AS codeName, A3.point_amount AS pointAmount, null AS cashAmount
+            , C3.company_id AS companyId, A3.created_at AS createdAt
+            FROM user_point_deposit A3 INNER JOIN `admin` B3
+            ON A3.admin_id = B3.admin_id
+            INNER JOIN company C3
+            ON B3.division_id = C3.company_id
+            INNER JOIN `code` D3
+            ON A3.`code` = D3.`code`
+        ) E
+        WHERE adminId = #{adminId}
+        ORDER BY E.createdAt DESC
+    </select>
+</mapper>

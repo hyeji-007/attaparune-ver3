@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.green.attaparunever2.order.OrderMapper">
+
+    <insert id="postOrder" useGeneratedKeys="true" keyProperty="orderId">
+        INSERT INTO `order`
+        SET user_id = #{userId}
+        , restaurant_id = #{restaurantId}
+    </insert>
+
+    <insert id="postOrderDetail" useGeneratedKeys="true" keyProperty="orderDetailId">
+        INSERT INTO order_detail
+        SET order_id = #{orderId},
+        menu_id = #{menuId},
+        menu_count = #{menuCount},
+        price = (SELECT price FROM restaurant_menu WHERE menu_id = #{menuId})
+    </insert>
+
+    <select id="getTotalPrice">
+        SELECT A.menu_count, A.price
+        FROM order_detail A
+        JOIN restaurant_menu B
+        ON A.menu_id = B.menu_id
+        WHERE A.order_id = #{orderId}
+    </select>
+
+    <select id="getOrder">
+        SELECT A.order_id AS orderId
+             , A.user_id AS userId
+             , A.reservation_yn AS reservationYn
+             , A.reservation_status AS reservationStatus
+             , A.created_at AS orderDate
+             , R.reservation_id AS reservationId
+             , R.reservation_time AS reservationTime
+             , R.reservation_people_count AS reservationPeopleCount
+             , R.reservation_cancel_reason AS reservationCancelReason
+             , R.user_phone AS userPhone
+             , R.created_at AS reservationCreatedAt
+             , SUM(B.menu_count * C.price) AS totalPrice
+          FROM `order` A
+          LEFT JOIN order_detail B
+            ON A.order_id = B.order_id
+          LEFT JOIN restaurant_menu C
+            ON B.menu_id = C.menu_id
+          LEFT JOIN reservation R
+            ON A.order_id = R.order_id
+         WHERE A.order_id = #{orderId}
+         GROUP BY A.order_id
+    </select>
+
+    <select id="getOrderList">
+        SELECT B.menu_id AS menuId
+             , B.menu_count AS menuCount
+             , B.price
+             , C.menu_name AS menuName
+             , B.price AS menuPrice
+          FROM order_detail B
+          LEFT JOIN restaurant_menu C
+            ON B.menu_id = C.menu_id
+         WHERE B.order_id = #{orderId}
+    </select>
+
+    <update id="updOrderAccess">
+        <![CDATA[
+        UPDATE `order`
+        SET reservation_status = CASE
+            WHEN #{reservationStatus} = 3
+            AND TIMESTAMPDIFF(HOUR, (SELECT created_at FROM reservation WHERE order_id = #{orderId}),
+            NOW()) > 1 THEN reservation_status
+            ELSE #{reservationStatus}
+        END
+        WHERE order_id = #{orderId};
+    ]]>
+    </update>
+
+    <select id="getOrderById">
+        SELECT
+        reservation_yn AS reservationYn,
+        reservation_status AS reservationStatus
+        FROM `order`
+        WHERE order_id = #{orderId};
+    </select>
+
+    <!-- 식당페이지 메인 예약 주문 목록 조회 -->
+    <select id="selReservationOrderListByRestaurantId">
+        SELECT A.order_id AS orderId, A.restaurant_id AS restaurantId, A.user_id AS userId, C.name AS userName, B.reservation_id AS reservationId
+        , reservation_time AS reservationTime, reservation_people_count AS reservationPeopleCount, user_phone AS userPhone
+        FROM `order` A LEFT JOIN reservation B
+        ON A.order_id = B.order_id
+        INNER JOIN user C
+        ON A.user_id = C.user_id
+        AND A.reservation_status = 0
+        WHERE A.restaurant_id = #{restaurantId}
+    </select>
+
+    <!-- 식당페이지 메인 예약 완료 주문 목록 조회 -->
+    <select id="selCompleteOrderListByRestaurantId">
+        SELECT A.order_id AS orderId, A.restaurant_id AS restaurantId, A.user_id AS userId, D.name AS userName, B.reservation_id AS reservationId
+        , IFNULL(reservation_time, A.created_at) AS reservationTime, reservation_people_count AS reservationPeopleCount, user_phone AS userPhone
+        FROM `order` A LEFT JOIN reservation B
+        ON A.order_id = B.order_id
+        INNER JOIN ticket C
+        ON A.order_id = C.order_id
+        INNER JOIN user D
+        ON A.user_id = D.user_id
+        WHERE A.restaurant_id = #{restaurantId}
+            AND C.ticket_status = 0
+    </select>
+
+    <!-- 주문의 메뉴 조회 -->
+    <select id="selOrderDetailByOrderId">
+        SELECT order_detail_id AS orderDetailId, order_id AS orderId, A.menu_id AS menuId, B.menu_name AS menuName, menu_count AS menuCount
+        , A.price, A.created_at AS createdAt, A.updated_at AS updatedAt
+        FROM order_detail A INNER JOIN restaurant_menu B
+        ON A.menu_id = B.menu_id
+        WHERE A.order_id = #{orderId}
+    </select>
+
+    <select id="getOrderVer2">
+        SELECT
+        A.restaurant_name AS restaurantName,
+        F.order_id AS orderId,
+        B.category_name AS categoryName,
+        E.created_at AS createdAt,
+        G.reservation_people_count AS reservationPeopleCount,
+        G.reservation_time AS reservationTime,
+        H.name AS userName,
+        H.phone AS userPhone,
+        SUM(E.menu_count * D.price) AS menuTotalPrice,
+        F.reservation_yn AS reservationYn
+        FROM restaurant A
+        INNER JOIN restaurant_category B ON A.category_id = B.category_id
+        INNER JOIN restaurant_menu_category C ON A.restaurant_id = C.restaurant_id
+        INNER JOIN restaurant_menu D ON C.category_id = D.category_id
+        INNER JOIN order_detail E ON D.menu_id = E.menu_id
+        INNER JOIN `order` F ON E.order_id = F.order_id
+        INNER JOIN reservation G ON F.order_id = G.order_id
+        INNER JOIN user H ON F.user_id = H.user_id
+        INNER JOIN ticket I ON I.order_id = F.order_id
+        WHERE H.user_id = #{signedUserId}
+        AND F.reservation_yn = 1
+        AND F.reservation_status = 1
+        AND ticket_status = 0
+        GROUP BY F.order_id
+    </select>
+
+    <select id="getOrderVer2MenuList">
+        SELECT
+        B.order_detail_id AS orderDetailId,
+        A.menu_id AS menuId,
+        A.menu_name AS menuName,
+        B.menu_count AS menuCount,
+        (A.price * B.menu_count) AS menuPrice
+        FROM restaurant_menu A
+        INNER JOIN order_detail B ON A.menu_id = B.menu_id
+        INNER JOIN `order` C ON C.order_id = B.order_id
+        INNER JOIN restaurant_menu_category D ON A.category_id = D.category_id
+        INNER JOIN restaurant E ON E.restaurant_id = D.restaurant_id
+        INNER JOIN restaurant_category F ON E.category_id = F.category_id
+        WHERE C.user_id = #{signedUserId}
+        GROUP BY B.order_detail_id
+    </select>
+
+    <select id="selOrderByOrderId">
+        SELECT order_id AS orderId, restaurant_id AS restaurantId, user_id AS userId, reservation_yn AS reservationYn
+        , reservation_status AS reservationStatus, created_at AS createdAt
+        FROM `order`
+        where order_id = #{orderId}
+    </select>
+
+    <insert id="insReservationOrder" useGeneratedKeys="true" keyProperty="orderId">
+        INSERT INTO `order`
+        SET user_id = #{userId}
+        , restaurant_id = #{restaurantId}
+        , reservation_yn = 1
+    </insert>
+</mapper>
