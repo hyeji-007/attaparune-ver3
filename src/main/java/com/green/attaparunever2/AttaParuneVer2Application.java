@@ -12,5 +12,4 @@ public class AttaParuneVer2Application {
     public static void main(String[] args) {
         SpringApplication.run(AttaParuneVer2Application.class, args);
     }
-
 }
