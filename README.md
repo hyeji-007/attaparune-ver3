@@ -256,7 +256,7 @@
 ---
 
 ## 📊 **8. E-R 다이어그램**
-
+ <img src="https://github.com/user-attachments/assets/819865a8-4cae-424d-aec5-dc51e5fced58">
 
 ---
 
