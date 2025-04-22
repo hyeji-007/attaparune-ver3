@@ -182,7 +182,7 @@
 
 ---
 
-## 👩‍💻👨‍💻 **3. 프로젝트 참여자**
+## 👩‍💻 **3. 프로젝트 참여자**
 
 | [이한샘](https://github.com/213am) | [강정호](https://github.com/jungho-Kang) | [권혜지](https://github.com/hyeji-007) | [사공수기](https://github.com/proregular) | [이어진](https://github.com/djwls0823) | [김우준](https://github.com/KWooJun) |
 | :--: | :--: | :--: | :--: | :--: | :--: |
@@ -232,60 +232,27 @@
 
 ---
 
-## ⚙️ **6. 기술 스택**
+## 🛠️ **6. 개발 환경**
 
-### 🎨 Frontend
-- **React 18 + TypeScript** – 전체 프로젝트 프론트엔드 프레임워크
-- **Vite** – 빠른 개발 환경과 빌드 툴
-- **Tailwind CSS** – 유틸리티 기반 스타일링
-- **Emotion (styled, react)** – 스타일 커스터마이징
-- **Framer Motion** – 애니메이션 효과
-- **Recoil** – 상태 관리 라이브러리
-- **React Router DOM v7** – 라우팅 처리
-- **React Hook Form + Yup + @hookform/resolvers** – 폼 관리 및 유효성 검사
-- **SweetAlert2** – 사용자 친화적 알림창
-- **Swiper** – 슬라이더
-
-### 📊 데이터 시각화 & 차트
-- **Chart.js + react-chartjs-2**
-- **ag-grid-react** – 고성능 데이터 그리드 컴포넌트
-
-### 📦 API & 유틸리티
-- **Axios** – HTTP 통신
-- **Dayjs** – 날짜 처리
-
-### 📸 미디어 & 입력 도구
-- **React Quill** – WYSIWYG 에디터
-- **React Daum Postcode** – 주소 검색
-- **qrcode.react** – QR코드 생성
-
-### 🛰️ 실시간 통신 & 결제
-- **SockJS-client + @stomp/stompjs** – WebSocket 기반 실시간 통신
-- **tosspayments/tosspayments-sdk** – 간편 결제 API 연동
-
-### 🌍 외부 API & 기타
-- **React Kakao Maps SDK** – 카카오 지도 연동
-- **Dompurify** – XSS 방지용 HTML Sanitizer
-- **React Cookie** – 쿠키 기반 인증
+- 💻 **IntelliJ**
+- 📬 **Postman**
+- 🌐 **GitHub**
 
 ---
 
-## 🧪 개발 환경 & 툴링
+## 🧪 **7. 사용 기술**
 
-- **TypeScript** – 정적 타입 시스템
-- **Vite** – 번들링 및 dev server
-- **ESLint + Prettier** – 코드 품질 및 스타일 관리
-- **eslint-plugin-react / react-hooks / prettier / refresh**
-- **TypeScript ESLint** – 타입 기반 린팅
+### 📚 **주요 프레임워크 / 라이브러리 (Back-End)**
+- ☕ **Java 11 (OpenJDK)**
+- 🚀 **Spring Boot 3.3.6**
+- 🔄 **MyBatis**
+- 🔐 **jjwt: 0.12.6**
+- 🧬 **Hibernate 60 (JPA)**
+- 🛡️ **Spring Security**
 
----
-
-## 🖥️ **7. 설치 및 실행 방법**
-
-1️⃣ **`git clone https://github.com/jungho-Kang/second-project.git .`** → 프로젝트 클론  
-2️⃣ **`npm i`** → 라이브러리 설치  
-3️⃣ **`npm run dev`** → 프로젝트 실행
-
+### 🏗️ Build Tool
+- ⚙️ **Gradle**
+  
 ---
 
 ## 📂 **8. 협업 자료**
