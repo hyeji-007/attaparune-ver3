@@ -263,7 +263,8 @@
 ## 📂 **9. 협업 자료**
 
 📜 **업무기록** 
-- [**Notion**](https://www.notion.so/2-17757d27ea1780b5bad3fea038d6931a)  
+- [**2차 Notion**](https://www.notion.so/2-17757d27ea1780b5bad3fea038d6931a)
+- [**3차 Notion**](https://spectacular-polyester-0b5.notion.site/3-1986d625693f80cfab29d5280d07a881)
 
 🎨 **레이아웃**
 - [**2차 Figma**](https://www.figma.com/design/NefxkP15saJiPNTBjAluG8/2%EC%B0%A8-%ED%94%84%EB%A1%9C%EC%A0%9D%ED%8A%B8-UI?node-id=18-8&p=f&t=kleJhbkLApa6Xhx8-0)
