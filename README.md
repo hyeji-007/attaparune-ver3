@@ -265,7 +265,7 @@
 ## 📂 **9. 협업 자료**
 
 📜 **업무기록** 
-- [**2차 Notion**](https://www.notion.so/2-17757d27ea1780b5bad3fea038d6931a)
+- [**2차 Notion**](https://bejewled-promotion-9ef.notion.site/2-17757d27ea1780b5bad3fea038d6931a)
 - [**3차 Notion**](https://spectacular-polyester-0b5.notion.site/3-1986d625693f80cfab29d5280d07a881)
 
 🎨 **레이아웃**
